@@ -1,0 +1,16 @@
+// Source: 07_ISR_SEMAPHORE_LAB.md
+// Section: Devicetree Overlay
+
+/ {
+    aliases {
+        sw0 = &button0;
+    };
+
+    buttons {
+        compatible = "gpio-keys";
+        button0: button_0 {
+            gpios = <&gpio0 5 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            label = "User button";
+        };
+    };
+};

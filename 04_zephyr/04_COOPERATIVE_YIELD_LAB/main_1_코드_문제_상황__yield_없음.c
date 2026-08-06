@@ -1,0 +1,34 @@
+// Source: 04_COOPERATIVE_YIELD_LAB.md
+// Section: 코드 (문제 상황 — yield 없음)
+
+#include <zephyr/kernel.h>
+
+#define STACK_SIZE 1024
+
+void coop_a_entry(void *p1, void *p2, void *p3) {
+    long count = 0;
+    while (1) {
+        count++;
+        if (count % 2000000 == 0) {
+            printk("CoopA: count=%ld\n", count);
+        }
+        // no yield - if this thread got the CPU first, it keeps it forever
+    }
+}
+
+void coop_b_entry(void *p1, void *p2, void *p3) {
+    long count = 0;
+    while (1) {
+        count++;
+        if (count % 2000000 == 0) {
+            printk("CoopB: count=%ld\n", count);
+        }
+    }
+}
+
+K_THREAD_DEFINE(coop_a_id, STACK_SIZE, coop_a_entry, NULL, NULL, NULL, -1, 0, 0);
+K_THREAD_DEFINE(coop_b_id, STACK_SIZE, coop_b_entry, NULL, NULL, NULL, -1, 0, 0);
+
+int main(void) {
+    return 0;
+}
