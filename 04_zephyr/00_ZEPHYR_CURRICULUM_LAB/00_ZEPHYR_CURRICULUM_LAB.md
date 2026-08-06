@@ -14,9 +14,9 @@
 
 ---
 
-## Step 1. VS Code에 Zephyr IDE 확장 설치
+## Step 1. VS Code에 Zephyr IDE Extension 설치
 
-1. VS Code Extensions(`Ctrl+Shift+X`)에서 `Zephyr IDE` 검색
+1. VS Code Extensions(`Ctrl+Shift+X`)에서 `Zephyr IDE Extension` 검색
 2. 제작사 **mylonics**의 **Zephyr IDE** 확장 설치
 3. 설치 후 VS Code 재시작
 
@@ -24,7 +24,7 @@
 
 ## Step 2. west 환경 & Zephyr SDK 설치
 
-### 방법 A — Zephyr IDE 확장 사용 (권장, GUI 기반)
+### 방법 A — Zephyr IDE Extension 사용 (권장, GUI 기반)
 
 1. 좌측 Activity Bar에서 Zephyr IDE 아이콘 클릭
 2. Command Palette(`Ctrl+Shift+P`) → **Zephyr IDE: Setup Zephyr IDE** 실행
