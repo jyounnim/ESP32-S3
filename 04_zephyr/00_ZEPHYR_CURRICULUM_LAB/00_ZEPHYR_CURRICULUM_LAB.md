@@ -2,16 +2,143 @@
 
 `freertos_curriculum/`의 22개 실습과 동일한 주제를, 이번엔 Zephyr RTOS의 API와 사상에 맞춰 다시 구성한 시리즈입니다. 단순히 함수 이름만 바꾼 것이 아니라, **Zephyr만의 설계(협조적/선점형 스레드 구분, 통합된 k_poll, k_event 등)가 FreeRTOS와 실제로 어떻게 다른지** 확인하는 데 초점을 맞췄습니다.
 
+> ⚠️ **PlatformIO는 ESP32 계열의 Zephyr 프레임워크를 지원하지 않습니다.** `platformio.ini`에 `framework = zephyr`를 지정해도 espressif32 플랫폼에서는 빌드되지 않는다는 점이 PlatformIO 커뮤니티 및 GitHub 이슈에서 확인되었습니다. 따라서 이 커리큘럼은 Zephyr 공식 도구인 **west** 기반으로 진행하며, VS Code는 "Zephyr IDE" 확장을 통해 에디터 겸 빌드/플래시 GUI로 사용합니다. (지금까지 GPIO/I2C/SPI/Wi-Fi/BLE 등 다른 커리큘럼에서 써온 PlatformIO + Arduino 프레임워크와는 완전히 다른 빌드 체계입니다)
+
 ## 사전 준비물
 
-- `ZEPHYR_LAB.md`에서 다룬 west + Zephyr SDK 환경 구축이 먼저 되어 있어야 합니다 (PlatformIO 아님)
-- 대부분 `printk()`만으로 확인 가능하고, 하드웨어 배선이 필요한 실습(07번)은 별도 명시
-- 코드의 출력 문자열은 영어로 작성되어 있습니다
-- 빌드: `west build -b esp32s3_devkitc/esp32s3/procpu` (보드 타겟 이름은 사용 중인 Zephyr 버전에 따라 다를 수 있으니 `west boards | grep esp32s3`로 확인)
+- PC (Windows / macOS / Linux, WSL2 권장 for Windows)
+- Python 3, Git 설치되어 있을 것
+- ESP32-S3 보드 (데이터 전송 지원 USB 케이블)
+- 디스크 여유 공간 5GB 이상 (Zephyr SDK + 모듈 소스 다운로드용)
+- 인터넷 연결 (최초 설치 시 다운로드 용량이 큼 — 네트워크 상태 확인 권장)
+
+---
+
+## Step 1. VS Code에 Zephyr IDE 확장 설치
+
+1. VS Code Extensions(`Ctrl+Shift+X`)에서 `Zephyr IDE` 검색
+2. 제작사 **mylonics**의 **Zephyr IDE** 확장 설치
+3. 설치 후 VS Code 재시작
+
+---
+
+## Step 2. west 환경 & Zephyr SDK 설치
+
+### 방법 A — Zephyr IDE 확장 사용 (권장, GUI 기반)
+
+1. 좌측 Activity Bar에서 Zephyr IDE 아이콘 클릭
+2. Command Palette(`Ctrl+Shift+P`) → **Zephyr IDE: Setup Zephyr IDE** 실행
+3. west workspace 초기화, Zephyr 소스 다운로드, SDK 설치가 자동으로 진행됨 (수 분~수십 분 소요, 네트워크 속도에 따라 다름)
+
+### 방법 B — 수동 설치 (터미널 CLI)
+
+```bash
+pip install west
+west init ~/zephyrproject
+cd ~/zephyrproject
+west update
+west zephyr-export
+pip install -r zephyr/scripts/requirements.txt
+west sdk install
+```
+
+**설치 확인**:
+
+```bash
+west --version
+west boards | grep esp32s3
+```
+
+`esp32s3_devkitc` 등 ESP32-S3 관련 보드 타겟이 출력되면 정상입니다. (Zephyr 버전에 따라 보드 타겟 이름이 `esp32s3_devkitc/esp32s3/procpu` 형태로 표기될 수 있습니다 — 정확한 이름은 이 명령으로 확인하세요.)
+
+---
+
+## Step 3. 새 프로젝트 생성
+
+### Zephyr IDE 확장 사용 시
+
+1. Zephyr IDE 패널 → **Create Project** 클릭
+2. 템플릿 선택 (Hello World 또는 Blank)
+3. Board 검색 → `esp32s3_devkitc` 계열 선택
+4. 프로젝트 이름 입력 후 생성
+
+### 프로젝트 구조
+
+```
+my_app/
+├── CMakeLists.txt
+├── prj.conf              ← 커널 설정 (Kconfig) — 이 커리큘럼의 CONFIG_EVENTS, CONFIG_PM 등이 여기 들어감
+├── boards/
+│   └── esp32s3_devkitc.overlay   ← 보드별 하드웨어 설정 (07번 실습 등에서 사용)
+└── src/
+    └── main.c
+```
+
+> ⚠️ 사용 중인 보드가 16MB Flash / 8MB PSRAM(N16R8)처럼 특정 메모리 구성이라면, `west build` 명령에 `-S flash-16M -S psram-8M` 같은 snippet 플래그를 추가하거나 overlay 파일에 반영해야 합니다. 보드 데이터시트를 먼저 확인하세요.
+
+---
+
+## Step 4. Hello World 작성 & 실행
+
+### `src/main.c`
+
+```c
+#include <zephyr/kernel.h>
+
+int main(void) {
+    while (1) {
+        printk("Hello, ESP32-S3! (Zephyr)\n");
+        k_sleep(K_SECONDS(1));
+    }
+    return 0;
+}
+```
+
+### 빌드 · 플래시 · 모니터
+
+```bash
+west build -b esp32s3_devkitc
+west flash
+west espressif monitor
+```
+
+Zephyr IDE 확장을 사용 중이라면 GUI의 **Build** / **Flash** / **Monitor** 버튼으로 동일하게 실행할 수 있습니다.
+
+### 실행 & 확인
+
+- 시리얼 모니터에 `Hello, ESP32-S3! (Zephyr)`가 1초 간격으로 출력되는지 확인
+- 안 뜨면 보드의 RESET 버튼을 눌러보고, 그래도 안 되면 USB 케이블/포트를 확인
+
+## 환경구축 체크리스트
+
+- [ ] Zephyr IDE 확장 설치 및 west workspace 구축 (Step 1~2)
+- [ ] `west boards | grep esp32s3`로 보드 타겟 이름 확인
+- [ ] esp32s3_devkitc 보드로 새 프로젝트 생성 (Step 3)
+- [ ] Hello World 코드 작성 → `west build` → `west flash` → 모니터 확인 (Step 4)
+
+> `west sdk install`과 최초 `west update`는 다운로드 용량이 커서 시간이 걸릴 수 있습니다. 네트워크 상태를 미리 확인하세요.
+
+## 트러블슈팅
+
+| 증상 | 원인 / 해결 |
+|---|---|
+| `west boards`에 esp32s3 관련 보드가 없음 | `west update`가 완료되지 않았거나 Espressif HAL 모듈이 누락 — `west update` 재실행 |
+| 빌드 시 Espressif HAL 관련 blob 에러 | Espressif HAL은 RF 관련 바이너리 blob이 별도로 필요 — `west blobs fetch hal_espressif` 실행 |
+| west build 실패 (보드를 찾을 수 없음) | 정확한 보드 타겟 이름을 `west boards \| grep esp32s3`로 재확인 (Zephyr 버전에 따라 표기 형식이 다를 수 있음) |
+| 새 터미널에서 `west: command not found` | west 환경이 활성화되지 않음 — `source ~/zephyrproject/zephyr/zephyr-env.sh`(또는 사용한 venv) 재실행 |
+| 시리얼 출력이 안 보임 | `west espressif monitor` 대신 `screen`/`minicom`으로 baud rate 115200 확인, RESET 버튼으로 재시작 |
+
+---
 
 ## FreeRTOS와의 첫 번째 큰 차이 — 우선순위 숫자
 
 **Zephyr는 숫자가 작을수록 우선순위가 높습니다** (FreeRTOS와 정반대). 게다가 **음수 우선순위는 "협조적(cooperative)" 스레드**, **0 이상은 "선점형(preemptible)" 스레드**로 아예 종류가 나뉩니다. 이건 FreeRTOS에는 없는 Zephyr만의 핵심 개념이라, 커리큘럼 초반부(02, 04번)에서 집중적으로 다룹니다.
+
+## 공통 사항 (01번부터 적용)
+
+- 대부분 `printk()`만으로 확인 가능하고, 하드웨어 배선이 필요한 실습(07번)은 별도 명시
+- 코드의 출력 문자열은 영어로 작성되어 있습니다
+- 이후 실습들의 빌드 명령은 위 Step 4와 동일하게 `west build -b esp32s3_devkitc`(또는 `esp32s3_devkitc/esp32s3/procpu`) → `west flash` → `west espressif monitor` 순서입니다
 
 ## 목차
 
